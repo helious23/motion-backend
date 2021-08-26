@@ -12,8 +12,8 @@
 
 ## User CRUD:
 
-- [ ] Create Account
-- [ ] Log In
+- [x] Create Account
+- [x] Log In
 - [ ] See Profile
 - [ ] Edit Profile
 - [ ] Verify Email
