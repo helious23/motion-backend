@@ -1,6 +1,6 @@
 # Backend of Motion Project
 
-## User Model:
+## User Entity:
 
 - id
 - createdAt
