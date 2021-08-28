@@ -14,7 +14,7 @@
 
 - [x] Create Account
 - [x] Log In
-- [ ] See Profile
-- [ ] Edit Profile
+- [x] See Profile
+- [x] Edit Profile
 - [ ] Verify Email
 

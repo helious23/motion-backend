@@ -10,6 +10,9 @@ import {
 import { JwtService } from '../jwt/jwt.service';
 import { UserProfileOutput } from './dtos/user-profile.dto';
 import { EditProfileInput, EditProfileOutput } from './dtos/edit-profile.dto';
+import { Verification } from './entities/verification.entity';
+import { VerifyEmailOutput } from './dtos/verify-email.dto';
+import * as bcrypt from 'bcrypt';
 import {
   EditPasswordInput,
   EditPasswordOutput,
@@ -19,6 +22,8 @@ import {
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
+    @InjectRepository(Verification)
+    private readonly verifications: Repository<Verification>,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -45,7 +50,7 @@ export class UsersService {
           error: '이미 등록된 전화번호 입니다',
         };
       }
-      await this.users.save(
+      const user = await this.users.save(
         this.users.create({
           email,
           password,
@@ -53,6 +58,12 @@ export class UsersService {
           phoneNumber,
           address,
           role,
+        }),
+      );
+
+      await this.verifications.save(
+        this.verifications.create({
+          user,
         }),
       );
       return {
@@ -68,7 +79,10 @@ export class UsersService {
 
   async login({ email, password }: LoginInput): Promise<LoginOutput> {
     try {
-      const user = await this.users.findOne({ email });
+      const user = await this.users.findOne(
+        { email },
+        { select: ['id', 'password'] },
+      );
       if (!user) {
         return {
           ok: false,
@@ -132,6 +146,9 @@ export class UsersService {
           };
         }
         user.email = email;
+        user.verified = false;
+        await this.verifications.delete({ user: { id: user.id } });
+        await this.verifications.save(this.verifications.create({ user }));
       }
       if (address) {
         if (user.address === address) {
@@ -142,25 +159,27 @@ export class UsersService {
         }
         user.address = address;
       }
-      if (user.phoneNumber === phoneNumber) {
-        return {
-          ok: false,
-          error: '동일한 전화번호로는 변경할 수 없습니다',
-        };
+      if (phoneNumber) {
+        if (user.phoneNumber === phoneNumber) {
+          return {
+            ok: false,
+            error: '동일한 전화번호로는 변경할 수 없습니다',
+          };
+        }
+        const existUser = await this.users.findOne({
+          where: {
+            phoneNumber,
+          },
+        });
+        if (existUser?.phoneNumber === phoneNumber) {
+          return {
+            ok: false,
+            error: '사용중인 전화번호 입니다',
+          };
+        }
+        user.phoneNumber = phoneNumber;
       }
-      const existUser = await this.users.findOne({
-        where: {
-          phoneNumber,
-        },
-      });
-      if (existUser?.phoneNumber === phoneNumber) {
-        return {
-          ok: false,
-          error: '사용중인 전화번호 입니다',
-        };
-      }
-      user.phoneNumber = phoneNumber;
-
+      await this.users.save(user);
       return { ok: true };
     } catch (error) {
       return {
@@ -176,15 +195,20 @@ export class UsersService {
   ): Promise<EditPasswordOutput> {
     try {
       const user = await this.users.findOne(userId);
-      if (password) {
-        if (user.password === password) {
-          return {
-            ok: false,
-            error: '동일한 비밀번호로는 변경할 수 없습니다',
-          };
-        }
-        user.password = password;
+      const userPassword = await this.users.findOne(userId, {
+        select: ['password'],
+      });
+      const samePassword = await bcrypt.compare(
+        password,
+        userPassword.password,
+      );
+      if (samePassword) {
+        return {
+          ok: false,
+          error: '동일한 비밀번호로는 변경할 수 없습니다',
+        };
       }
+      user.password = password;
       await this.users.save(user);
       return { ok: true };
     } catch (error) {
@@ -192,6 +216,28 @@ export class UsersService {
       return {
         ok: false,
         error: '패스워드를 수정하지 못했습니다',
+      };
+    }
+  }
+
+  async verifyEmail({ code }): Promise<VerifyEmailOutput> {
+    try {
+      const verification = await this.verifications.findOne(
+        { code },
+        { relations: ['user'] },
+      );
+      if (verification) {
+        verification.user.verified = true;
+        await this.users.save(verification.user);
+        await this.verifications.delete(verification.id);
+        return {
+          ok: true,
+        };
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        error: '이메일을 인증하지 못했습니다',
       };
     }
   }

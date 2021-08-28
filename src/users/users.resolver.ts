@@ -12,6 +12,7 @@ import { AuthUser } from 'src/auth/auth-user.decorator';
 import { UserProfileInput, UserProfileOutput } from './dtos/user-profile.dto';
 import { Role } from 'src/auth/role.decorator';
 import { EditProfileOutput, EditProfileInput } from './dtos/edit-profile.dto';
+import { VerifyEmailOutput, VerifyEmailInput } from './dtos/verify-email.dto';
 import {
   EditPasswordOutput,
   EditPasswordInput,
@@ -63,5 +64,12 @@ export class UsersResolver {
     @Args('input') editPasswordInput: EditPasswordInput,
   ): Promise<EditPasswordOutput> {
     return this.usersService.editPassword(authUser.id, editPasswordInput);
+  }
+
+  @Mutation(returns => VerifyEmailOutput)
+  verifyEmail(
+    @Args('input') verifyEmailInput: VerifyEmailInput,
+  ): Promise<VerifyEmailOutput> {
+    return this.usersService.verifyEmail(verifyEmailInput);
   }
 }
