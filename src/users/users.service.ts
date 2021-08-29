@@ -13,6 +13,7 @@ import { EditProfileInput, EditProfileOutput } from './dtos/edit-profile.dto';
 import { Verification } from './entities/verification.entity';
 import { VerifyEmailOutput } from './dtos/verify-email.dto';
 import * as bcrypt from 'bcrypt';
+import { MailService } from '../mail/mail.service';
 import {
   EditPasswordInput,
   EditPasswordOutput,
@@ -24,6 +25,7 @@ export class UsersService {
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Verification)
     private readonly verifications: Repository<Verification>,
+    private readonly mailService: MailService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -61,11 +63,12 @@ export class UsersService {
         }),
       );
 
-      await this.verifications.save(
+      const verification = await this.verifications.save(
         this.verifications.create({
           user,
         }),
       );
+      this.mailService.sendVerificationEmail(user.email, verification.code);
       return {
         ok: true,
       };
@@ -148,7 +151,11 @@ export class UsersService {
         user.email = email;
         user.verified = false;
         await this.verifications.delete({ user: { id: user.id } });
-        await this.verifications.save(this.verifications.create({ user }));
+        const verification = await this.verifications.save(
+          this.verifications.create({ user }),
+        );
+
+        this.mailService.sendVerificationEmail(user.email, verification.code);
       }
       if (address) {
         if (user.address === address) {
@@ -191,24 +198,21 @@ export class UsersService {
 
   async editPassword(
     userId: number,
-    { password }: EditPasswordInput,
+    { password: newPassword }: EditPasswordInput,
   ): Promise<EditPasswordOutput> {
     try {
       const user = await this.users.findOne(userId);
-      const userPassword = await this.users.findOne(userId, {
+      const { password: oldPassword } = await this.users.findOne(userId, {
         select: ['password'],
       });
-      const samePassword = await bcrypt.compare(
-        password,
-        userPassword.password,
-      );
+      const samePassword = await bcrypt.compare(newPassword, oldPassword);
       if (samePassword) {
         return {
           ok: false,
           error: '동일한 비밀번호로는 변경할 수 없습니다',
         };
       }
-      user.password = password;
+      user.password = newPassword;
       await this.users.save(user);
       return { ok: true };
     } catch (error) {

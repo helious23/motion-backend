@@ -7,7 +7,7 @@ import {
 } from '@nestjs/graphql';
 import { IsEmail, IsEnum, IsNumber, IsString } from 'class-validator';
 import { BeforeInsert, BeforeUpdate, Column, Entity } from 'typeorm';
-import { CoreEntity } from '../../common/entities/core.entity';
+import { CoreEntity } from 'src/common/entities/core.entity';
 import * as bcrypt from 'bcrypt';
 import { InternalServerErrorException } from '@nestjs/common';
 
