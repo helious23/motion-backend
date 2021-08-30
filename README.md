@@ -16,5 +16,5 @@
 - [x] Log In
 - [x] See Profile
 - [x] Edit Profile
-- [ ] Verify Email
+- [x] Verify Email
 

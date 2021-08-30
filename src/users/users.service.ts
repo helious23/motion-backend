@@ -11,13 +11,14 @@ import { JwtService } from '../jwt/jwt.service';
 import { UserProfileOutput } from './dtos/user-profile.dto';
 import { EditProfileInput, EditProfileOutput } from './dtos/edit-profile.dto';
 import { Verification } from './entities/verification.entity';
-import { VerifyEmailOutput } from './dtos/verify-email.dto';
+import { VerifyEmailOutput, VerifyEmailInput } from './dtos/verify-email.dto';
 import * as bcrypt from 'bcrypt';
 import { MailService } from '../mail/mail.service';
 import {
   EditPasswordInput,
   EditPasswordOutput,
 } from './dtos/edit-password.dto';
+import { exist } from 'joi';
 
 @Injectable()
 export class UsersService {
@@ -38,8 +39,8 @@ export class UsersService {
     role,
   }: CreateAccountInput): Promise<CreateAccountOutput> {
     try {
-      const existsEmail = await this.users.findOne({ email });
-      if (existsEmail) {
+      const existEmail = await this.users.findOne({ email });
+      if (existEmail) {
         return {
           ok: false,
           error: '이미 등록된 이메일 입니다',
@@ -224,7 +225,7 @@ export class UsersService {
     }
   }
 
-  async verifyEmail({ code }): Promise<VerifyEmailOutput> {
+  async verifyEmail({ code }: VerifyEmailInput): Promise<VerifyEmailOutput> {
     try {
       const verification = await this.verifications.findOne(
         { code },
