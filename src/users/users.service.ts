@@ -2,6 +2,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { Injectable } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { LoginInput, LoginOutput } from './dtos/login.dto';
 import {
   CreateAccountInput,
@@ -12,13 +13,11 @@ import { UserProfileOutput } from './dtos/user-profile.dto';
 import { EditProfileInput, EditProfileOutput } from './dtos/edit-profile.dto';
 import { Verification } from './entities/verification.entity';
 import { VerifyEmailOutput, VerifyEmailInput } from './dtos/verify-email.dto';
-import * as bcrypt from 'bcrypt';
 import { MailService } from '../mail/mail.service';
 import {
   EditPasswordInput,
   EditPasswordOutput,
 } from './dtos/edit-password.dto';
-import { exist } from 'joi';
 
 @Injectable()
 export class UsersService {
@@ -217,7 +216,6 @@ export class UsersService {
       await this.users.save(user);
       return { ok: true };
     } catch (error) {
-      console.log(error);
       return {
         ok: false,
         error: '패스워드를 수정하지 못했습니다',
@@ -239,6 +237,7 @@ export class UsersService {
           ok: true,
         };
       }
+      return { ok: false, error: '인증되지 않았습니다' };
     } catch (error) {
       return {
         ok: false,

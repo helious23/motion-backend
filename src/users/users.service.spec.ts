@@ -6,6 +6,13 @@ import { Verification } from './entities/verification.entity';
 import { JwtService } from '../jwt/jwt.service';
 import { MailService } from '../mail/mail.service';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+
+jest.mock('bcrypt', () => {
+  return {
+    compare: jest.fn(),
+  };
+});
 
 const mockRepository = () => ({
   findOne: jest.fn(),
@@ -20,9 +27,9 @@ const mockJwtService = () => ({
   verify: jest.fn(),
 });
 
-const mockMailService = {
+const mockMailService = () => ({
   sendVerificationEmail: jest.fn(),
-};
+});
 
 type MockRepository<T = any> = Partial<Record<keyof Repository<T>, jest.Mock>>;
 
@@ -51,7 +58,7 @@ describe('UserService', () => {
         },
         {
           provide: MailService,
-          useValue: mockMailService,
+          useValue: mockMailService(),
         },
       ],
     }).compile();
@@ -234,7 +241,7 @@ describe('UserService', () => {
       });
     });
 
-    it('should fail if eamil is used already', async () => {
+    it('should fail if email is used already', async () => {
       usersRepository.findOne
         .mockResolvedValueOnce({
           email: 'old-email@email.com',
@@ -263,7 +270,11 @@ describe('UserService', () => {
         code: 'code',
       };
 
-      usersRepository.findOne.mockResolvedValue(oldUser);
+      usersRepository.findOne
+        .mockResolvedValueOnce(oldUser)
+        .mockResolvedValue(undefined);
+
+      verificationsRepository.delete.mockReturnValue(newVerification);
       verificationsRepository.create.mockReturnValue(newVerification);
       verificationsRepository.save.mockResolvedValue(newVerification);
 
@@ -274,17 +285,211 @@ describe('UserService', () => {
         editprofileArgs.userId,
       );
 
-      expect(usersRepository.create).toHaveBeenCalledTimes(1);
-      expect(usersRepository.create).toHaveBeenCalledWith({
-        verified: false,
-        email: editprofileArgs.input.email,
+      expect(verificationsRepository.delete).toHaveBeenCalledTimes(1);
+
+      expect(verificationsRepository.create).toHaveBeenCalledTimes(1);
+      expect(verificationsRepository.create).toHaveBeenCalledWith({
+        user: { email: editprofileArgs.input.email, verified: false },
       });
 
+      expect(verificationsRepository.save).toHaveBeenCalledTimes(1);
+      expect(verificationsRepository.save).toHaveBeenCalledWith(
+        newVerification,
+      );
+
+      expect(mailService.sendVerificationEmail).toHaveBeenCalledTimes(1);
+      expect(mailService.sendVerificationEmail).toHaveBeenCalledWith(
+        editprofileArgs.input.email,
+        newVerification.code,
+      );
+
       expect(usersRepository.save).toHaveBeenCalledTimes(1);
-      expect(usersRepository.save).toHaveBeenCalledWith(newVerification);
+      expect(usersRepository.save).toHaveBeenCalledWith({
+        email: editprofileArgs.input.email,
+        verified: false,
+      });
+    });
+
+    it('should fail if address is same', async () => {
+      usersRepository.findOne.mockResolvedValue({
+        address: 'new-address',
+      });
+      const result = await service.editProfile(1, {
+        address: 'new-address',
+      });
+      expect(result).toEqual({
+        ok: false,
+        error: '동일한 주소로는 변경할 수 없습니다',
+      });
+    });
+
+    it('should change address', async () => {
+      const oldUser = {
+        address: 'old-address',
+      };
+      const editprofileArgs = {
+        userId: 1,
+        input: { address: 'new-address' },
+      };
+      usersRepository.findOne.mockResolvedValueOnce(oldUser);
+
+      await service.editProfile(editprofileArgs.userId, editprofileArgs.input);
+
+      expect(usersRepository.save).toHaveBeenCalledTimes(1);
+      expect(usersRepository.save).toHaveBeenCalledWith({
+        address: editprofileArgs.input.address,
+      });
+    });
+
+    it('should fail if phoneNumber is same', async () => {
+      usersRepository.findOne.mockResolvedValue({
+        phoneNumber: 1234,
+      });
+      const result = await service.editProfile(1, {
+        phoneNumber: 1234,
+      });
+      expect(result).toEqual({
+        ok: false,
+        error: '동일한 전화번호로는 변경할 수 없습니다',
+      });
+    });
+
+    it('should fail if phoneNumber is used already', async () => {
+      usersRepository.findOne
+        .mockResolvedValueOnce({
+          phoneNumber: 1234,
+        })
+        .mockResolvedValue({ phoneNumber: 5678 });
+
+      const result = await service.editProfile(1, {
+        phoneNumber: 5678,
+      });
+      expect(result).toEqual({
+        ok: false,
+        error: '사용중인 전화번호 입니다',
+      });
+    });
+
+    it('should change phoneNumber', async () => {
+      const oldUser = {
+        phoneNumber: 1234,
+      };
+      const editprofileArgs = {
+        userId: 1,
+        input: { phoneNumber: 5678 },
+      };
+      usersRepository.findOne.mockResolvedValueOnce(oldUser);
+
+      await service.editProfile(editprofileArgs.userId, editprofileArgs.input);
+
+      expect(usersRepository.save).toHaveBeenCalledTimes(1);
+      expect(usersRepository.save).toHaveBeenCalledWith({
+        phoneNumber: editprofileArgs.input.phoneNumber,
+      });
+    });
+
+    it('should fail on exception', async () => {
+      usersRepository.findOne.mockRejectedValue(new Error());
+      const result = await service.editProfile(1, { email: 'old@email.com' });
+      expect(result).toEqual({
+        ok: false,
+        error: '프로필을 수정하지 못했습니다',
+      });
     });
   });
 
-  it.todo('editPassword');
-  it.todo('verifyEmail');
+  describe('editPassword', () => {
+    it('should fail if password is same', async () => {
+      usersRepository.findOne
+        .mockResolvedValueOnce({
+          password: 'new-password',
+        })
+        .mockResolvedValue({ password: 'new-password' });
+
+      jest.spyOn(bcrypt, 'compare').mockImplementation(async () => true);
+
+      const result = await service.editPassword(1, {
+        password: 'new-password',
+      });
+      expect(result).toEqual({
+        ok: false,
+        error: '동일한 비밀번호로는 변경할 수 없습니다',
+      });
+    });
+
+    it('should change password', async () => {
+      const oldUser = {
+        password: 'old-password',
+      };
+      const editPasswordArgs = {
+        userId: 1,
+        input: { password: 'new-password' },
+      };
+      usersRepository.findOne
+        .mockResolvedValueOnce(oldUser)
+        .mockResolvedValue(editPasswordArgs.input);
+
+      jest.spyOn(bcrypt, 'compare').mockImplementation(async () => false);
+
+      await service.editPassword(
+        editPasswordArgs.userId,
+        editPasswordArgs.input,
+      );
+
+      expect(usersRepository.save).toHaveBeenCalledTimes(1);
+      expect(usersRepository.save).toHaveBeenCalledWith({
+        password: editPasswordArgs.input.password,
+      });
+    });
+
+    it('should fail on exception', async () => {
+      usersRepository.findOne.mockRejectedValue(new Error());
+      const result = await service.editPassword(1, { password: 'oldpassword' });
+      expect(result).toEqual({
+        ok: false,
+        error: '패스워드를 수정하지 못했습니다',
+      });
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('should verify email', async () => {
+      const mockedVerification = {
+        user: {
+          verified: false,
+        },
+        id: 1,
+      };
+      verificationsRepository.findOne.mockResolvedValue(mockedVerification);
+
+      const result = await service.verifyEmail({ code: '' });
+      expect(verificationsRepository.findOne).toHaveBeenCalledTimes(1);
+      expect(verificationsRepository.findOne).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+      );
+      expect(usersRepository.save).toHaveBeenCalledTimes(1);
+      expect(usersRepository.save).toHaveBeenCalledWith({ verified: true });
+
+      expect(verificationsRepository.delete).toHaveBeenCalledTimes(1);
+      expect(verificationsRepository.delete).toHaveBeenCalledWith(
+        mockedVerification.id,
+      );
+
+      expect(result).toEqual({ ok: true });
+    });
+    it('should fail on verification not found', async () => {
+      verificationsRepository.findOne.mockResolvedValue(undefined);
+      const result = await service.verifyEmail({ code: '' });
+      expect(result).toEqual({ ok: false, error: '인증되지 않았습니다' });
+    });
+    it('should fail on exception', async () => {
+      verificationsRepository.findOne.mockRejectedValue(new Error());
+      const result = await service.verifyEmail({ code: '' });
+      expect(result).toEqual({
+        ok: false,
+        error: '이메일을 인증하지 못했습니다',
+      });
+    });
+  });
 });
