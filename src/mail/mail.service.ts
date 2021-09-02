@@ -11,7 +11,7 @@ export class MailService {
     @Inject(CONFIG_OPTIONS) private readonly options: MailModuleOptions,
   ) {}
 
-  private async sendEmail(
+  async sendEmail(
     subject: string, // 제목
     template: string, // mailgun template name
     to: string, // mail 수신자
