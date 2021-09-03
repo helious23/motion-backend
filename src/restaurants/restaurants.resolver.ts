@@ -1,40 +1,40 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { CreateRestaurantInput } from './dtos/create-restaurant.dto';
+import { AuthUser } from 'src/auth/auth-user.decorator';
+import {
+  CreateRestaurantInput,
+  CreateRestaurantOutput,
+} from './dtos/create-restaurant.dto';
 import { Restaurant } from './entities/restaurant.entity';
 import { RestaurantService } from './restaurants.service';
-import { UpdateRestaurantDto } from './dtos/update-restaurant.dto';
+import { User, UserRole } from '../users/entities/user.entity';
+import { Role } from 'src/auth/role.decorator';
+import {
+  EditRestaurantOutput,
+  EditRestaurantInput,
+} from './dtos/edit-restaurant.dto';
 
 @Resolver(of => Restaurant)
 export class RestaurantResolver {
   constructor(private readonly restaurantService: RestaurantService) {}
 
-  @Query(returns => [Restaurant])
-  restaurants(): Promise<Restaurant[]> {
-    return this.restaurantService.getAll();
-  }
-
-  @Mutation(returns => Boolean)
-  async createRestaurant(
+  @Mutation(returns => CreateRestaurantOutput)
+  @Role(['Owner'])
+  createRestaurant(
+    @AuthUser() owner: User,
     @Args('input') createRestaurantInput: CreateRestaurantInput,
-  ): Promise<boolean> {
-    try {
-      await this.restaurantService.createRestaurant(createRestaurantInput);
-      return true;
-    } catch (error) {
-      console.log(error);
-      return false;
-    }
+  ): Promise<CreateRestaurantOutput> {
+    return this.restaurantService.createRestaurant(
+      owner,
+      createRestaurantInput,
+    );
   }
 
-  @Mutation(resturns => Boolean)
-  async updateRestaurant(
-    @Args('input') updateRestaurantDto: UpdateRestaurantDto,
-  ): Promise<boolean> {
-    try {
-      await this.restaurantService.updateRestaurant(updateRestaurantDto);
-      return true;
-    } catch (error) {
-      return false;
-    }
+  @Mutation(returns => EditRestaurantOutput)
+  @Role(['Owner'])
+  editRestaurant(
+    @AuthUser() owner: User,
+    @Args('input') editRestaurantInput: EditRestaurantInput,
+  ): Promise<EditRestaurantOutput> {
+    return this.restaurantService.editRestaurant(owner, editRestaurantInput);
   }
 }
