@@ -31,7 +31,7 @@ registerEnumType(UserRole, { name: 'UserRole' });
 @Entity()
 export class User extends CoreEntity {
   @Field(type => String)
-  @Column()
+  @Column({ unique: true })
   @IsEmail()
   email: string;
 
@@ -66,7 +66,7 @@ export class User extends CoreEntity {
   verified: boolean;
 
   @Field(type => [Restaurant])
-  @OneToMany(type => Restaurant, restaurant => restaurant.category)
+  @OneToMany(type => Restaurant, restaurant => restaurant.owner)
   restaurants: Restaurant[];
 
   @BeforeInsert()

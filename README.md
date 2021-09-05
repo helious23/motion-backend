@@ -24,15 +24,24 @@
 - [x] coverImage
 
 ## Restaurant CRUD:
-- [ ] Edit Restaurant
-- [ ] Delete Restaurant
+- [x] Edit Restaurant
+- [x] Delete Restaurant
 
-- [ ] See categories
-- [ ] See Restaurants by Caregory (pagination)
-- [ ] See Restaurants (pagination)
-- [ ] See Restaurant
+- [x] See categories
+- [x] See Restaurants by Caregory (pagination)
+- [x] See Restaurants (pagination)
+- [x] See Restaurant
+- [x] Search Restaurant
 
 ## Dish CRUD:
 - [ ] Create Dish
 - [ ] Edit Dish
 - [ ] Delete Dish
+
+## Orders CRUD:
+- [ ] Create Order
+- [ ] Edit Order
+
+## Orders Subscription(Owner, Customer, Delivery)
+
+## Payment(cron)

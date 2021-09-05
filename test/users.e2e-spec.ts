@@ -356,6 +356,29 @@ describe('UserModule (e2e)', () => {
       const [verification] = await verificationRepository.find();
       verificationCode = verification.code;
     });
+    it('should fail verification is wrong', () => {
+      return publicTest(`
+        mutation
+            {
+              verifyEmail(input:{code:"wrong-code"}){
+                ok
+                error
+              }
+            }
+      `)
+        .expect(200)
+        .expect(res => {
+          const {
+            body: {
+              data: {
+                verifyEmail: { ok, error },
+              },
+            },
+          } = res;
+          expect(ok).toBeFalsy;
+          expect(error).toEqual(expect.any(String));
+        });
+    });
     it('should verify email', () => {
       return publicTest(`
         mutation
@@ -377,29 +400,6 @@ describe('UserModule (e2e)', () => {
           } = res;
           expect(ok).toBeTruthy;
           expect(error).toBeNull;
-        });
-    });
-    it('should fail verification is not found', () => {
-      return publicTest(`
-        mutation
-            {
-              verifyEmail(input:{code:"wrong-code"}){
-                ok
-                error
-              }
-            }
-      `)
-        .expect(200)
-        .expect(res => {
-          const {
-            body: {
-              data: {
-                verifyEmail: { ok, error },
-              },
-            },
-          } = res;
-          expect(ok).toBeFalsy;
-          expect(error).toEqual(expect.any(String));
         });
     });
   });
