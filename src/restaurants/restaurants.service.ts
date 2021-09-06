@@ -9,6 +9,10 @@ import { AllCategoriesOutput } from './dtos/all-categories.dto';
 import { CategoryOutput, CategoryInput } from './dtos/category.dto';
 import { RestaurantsInput, RestaurantsOutput } from './dtos/restaurants.dto';
 import { RestaurantInput, RestaurantOutput } from './dtos/restaurant.dto';
+import { CreateDishInput, CreateDishOutput } from './dtos/create-dish.dto';
+import { Dish } from './entities/dish.entity';
+import { DeleteDishInput, DeleteDishOutput } from './dtos/delete-dish.dto';
+import { EditDishInput, EditDishOutput } from './dtos/edit-dish.dto';
 import {
   SearchRestaurantInput,
   SearchRestaurantOutput,
@@ -32,6 +36,7 @@ export class RestaurantService {
     @InjectRepository(Restaurant)
     private readonly restaurants: Repository<Restaurant>,
     private readonly categories: CategoryRepository,
+    @InjectRepository(Dish) private readonly dishes: Repository<Dish>,
   ) {}
 
   async createRestaurant(
@@ -206,7 +211,9 @@ export class RestaurantService {
     restaurantId,
   }: RestaurantInput): Promise<RestaurantOutput> {
     try {
-      const restaurant = await this.restaurants.findOne(restaurantId);
+      const restaurant = await this.restaurants.findOne(restaurantId, {
+        relations: ['menu'],
+      });
       if (!restaurant) {
         return {
           ok: false,
@@ -247,6 +254,101 @@ export class RestaurantService {
       return {
         ok: false,
         error: '식당을 검색할 수 없습니다',
+      };
+    }
+  }
+
+  async createDish(
+    owner: User,
+    createDishInput: CreateDishInput,
+  ): Promise<CreateDishOutput> {
+    try {
+      const restaurant = await this.restaurants.findOne(
+        createDishInput.restaurantId,
+      );
+      if (!restaurant) {
+        return { ok: false, error: '식당을 찾을 수 없습니다' };
+      }
+      if (owner.id !== restaurant.ownerId) {
+        return {
+          ok: false,
+          error: '자신이 등록한 식당의 메뉴만 생성할 수 있습니다',
+        };
+      }
+      await this.dishes.save(
+        this.dishes.create({ ...createDishInput, restaurant }),
+      );
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        error: '메뉴를 생성하지 못했습니다',
+      };
+    }
+  }
+
+  async deleteDish(
+    owner: User,
+    { dishId }: DeleteDishInput,
+  ): Promise<DeleteDishOutput> {
+    try {
+      const dish = await this.dishes.findOne(dishId, {
+        relations: ['restaurant'],
+      });
+      if (!dish) {
+        return {
+          ok: false,
+          error: '메뉴를 찾을 수 없습니다',
+        };
+      }
+      if (dish.restaurant.ownerId !== owner.id) {
+        return {
+          ok: false,
+          error: '자신이 소유한 식당의 메뉴만 수정할 수 있습니다',
+        };
+      }
+      await this.dishes.delete(dishId);
+      return { ok: true };
+    } catch (error) {
+      console.log(error);
+      return {
+        ok: false,
+        error: '메뉴를 삭제할 수 없습니다',
+      };
+    }
+  }
+
+  async editDish(
+    owner: User,
+    editDishInput: EditDishInput,
+  ): Promise<EditDishOutput> {
+    try {
+      const dish = await this.dishes.findOne(editDishInput.dishId, {
+        relations: ['restaurant'],
+      });
+      if (!dish) {
+        return {
+          ok: false,
+          error: '메뉴를 찾을 수 없습니다',
+        };
+      }
+      if (dish.restaurant.ownerId !== owner.id) {
+        return {
+          ok: false,
+          error: '자신이 소유한 식당의 메뉴만 수정할 수 있습니다',
+        };
+      }
+      await this.dishes.save([
+        {
+          id: editDishInput.dishId,
+          ...editDishInput,
+        },
+      ]);
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        error: '메뉴를 수정할 수 없습니다',
       };
     }
   }
