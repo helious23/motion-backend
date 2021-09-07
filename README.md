@@ -41,7 +41,7 @@
 ## Orders CRUD:
 - [x] Create Order
 - [x] Read Order
-- [ ] Edit Order
+- [x] Edit Order
 
 ## Orders Subscription(Owner, Customer, Delivery)
 
