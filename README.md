@@ -34,12 +34,13 @@
 - [x] Search Restaurant
 
 ## Dish CRUD:
-- [ ] Create Dish
-- [ ] Edit Dish
-- [ ] Delete Dish
+- [x] Create Dish
+- [x] Edit Dish
+- [x] Delete Dish
 
 ## Orders CRUD:
-- [ ] Create Order
+- [x] Create Order
+- [x] Read Order
 - [ ] Edit Order
 
 ## Orders Subscription(Owner, Customer, Delivery)

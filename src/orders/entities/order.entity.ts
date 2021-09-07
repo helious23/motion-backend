@@ -5,11 +5,17 @@ import {
   ObjectType,
   registerEnumType,
 } from '@nestjs/graphql';
-import { Entity, Column, ManyToOne, ManyToMany, JoinTable } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  ManyToMany,
+  JoinTable,
+  RelationId,
+} from 'typeorm';
 import { CoreEntity } from '../../common/entities/core.entity';
 import { User } from '../../users/entities/user.entity';
 import { Restaurant } from '../../restaurants/entities/restaurant.entity';
-import { Dish } from '../../restaurants/entities/dish.entity';
 import { IsEnum, IsNumber } from 'class-validator';
 import { OrderItem } from './order-item.entity';
 
@@ -35,6 +41,9 @@ export class Order extends CoreEntity {
   })
   customer?: User;
 
+  @RelationId((order: Order) => order.customer)
+  customerId: number;
+
   @Field(type => User, { nullable: true })
   @ManyToOne(type => User, user => user.rides, {
     onDelete: 'SET NULL',
@@ -42,6 +51,9 @@ export class Order extends CoreEntity {
     eager: true,
   })
   driver?: User;
+
+  @RelationId((order: Order) => order.driver)
+  driverId: number;
 
   @Field(type => Restaurant, { nullable: true })
   @ManyToOne(type => Restaurant, restaurant => restaurant.orders, {
@@ -52,7 +64,7 @@ export class Order extends CoreEntity {
   restaurant?: Restaurant;
 
   @Field(type => [OrderItem])
-  @ManyToMany(type => OrderItem)
+  @ManyToMany(type => OrderItem, { eager: true })
   @JoinTable()
   items: OrderItem[];
 
