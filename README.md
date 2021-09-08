@@ -44,5 +44,8 @@
 - [x] Edit Order
 
 ## Orders Subscription(Owner, Customer, Delivery)
+- [x] Pending Orders (for Restaurant Owner) subscription: newOrder, trigger: createOrder(newOrder)
+- [x] Pending Pickup Order (for Delivery) subsciption: orderUpdate, trigger: editOrder(orderUpdate)
+- [ ] Order Status (Customer) subsciption: orderUpdate, trigger: editOrder(orderUpdate)
 
 ## Payment(cron)
