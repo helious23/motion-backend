@@ -17,6 +17,7 @@ import {
 } from '../common/common.constants';
 import { PubSub } from 'graphql-subscriptions';
 import { NEW_ORDER_UPDATE } from '../common/common.constants';
+import { TakeOrderInput, TakeOrderOutput } from './dtos/take-order.dto';
 
 @Injectable()
 export class OrderService {
@@ -260,6 +261,7 @@ export class OrderService {
         id: orderId,
         status,
       });
+
       const newOrder = { ...order, status };
 
       if (user.role === UserRole.Owner) {
@@ -279,6 +281,43 @@ export class OrderService {
       return {
         ok: false,
         error: '주문을 수정할 수 없습니다',
+      };
+    }
+  }
+
+  async takeOrder(
+    driver: User,
+    { id: orderId }: TakeOrderInput,
+  ): Promise<TakeOrderOutput> {
+    try {
+      const order = await this.orders.findOne(orderId);
+      if (!order) {
+        return {
+          ok: false,
+          error: '주문을 찾지 못했습니다',
+        };
+      }
+      if (order.driver) {
+        return {
+          ok: false,
+          error: '다른 기사님이 이미 배치되었습니다',
+        };
+      }
+      await this.orders.save([
+        {
+          id: orderId,
+          driver,
+        },
+      ]);
+
+      await this.pubSub.publish(NEW_ORDER_UPDATE, {
+        orderUpdates: { ...order, driver },
+      });
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        error: '주문을 받지 못했습니다',
       };
     }
   }

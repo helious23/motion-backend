@@ -42,10 +42,11 @@
 - [x] Create Order
 - [x] Read Order
 - [x] Edit Order
+- [ ] Add Driver to Order
 
 ## Orders Subscription(Owner, Customer, Delivery)
 - [x] Pending Orders (for Restaurant Owner) subscription: newOrder, trigger: createOrder(newOrder)
 - [x] Pending Pickup Order (for Delivery) subsciption: orderUpdate, trigger: editOrder(orderUpdate)
-- [ ] Order Status (Customer) subsciption: orderUpdate, trigger: editOrder(orderUpdate)
+- [x] Order Status (Customer) subsciption: orderUpdate, trigger: editOrder(orderUpdate)
 
 ## Payment(cron)
